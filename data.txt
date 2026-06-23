@@ -1,0 +1,5 @@
+color:0x22D3EE
+records:[]
+screen_type:show
+scores:[]
+temp:29

@@ -1,0 +1,5 @@
+Adafruit CircuitPython 10.0.3 on 2025-10-17; Adafruit MatrixPortal S3 with ESP32S3
+Board ID:adafruit_matrixportal_s3
+UID:8273F271CD47
+MAC:28:37:2F:17:DC:74
+boot.py salida:

@@ -1,0 +1,12 @@
+C %$adafruit_ds1307.py I2CDevice <adafruit_bus_device.i2c_device  i2c_bcd_datetime i2c_bit "adafruit_register typing struct_time time I2C 
+busio 2.1.26 DS1307 
+RWBit &BCDDateTimeRegister setter #i2c_device &write_then_readinto out_end in_start datetime "datetime_register $disable_oscillator M__version__ __repo__ /-5property ‚i2c_bus o‚E=https://github.com/adafruit/Adafruit_CircuitPython_DS1307.git *Unable to find DS1307 at i2c address 0x68. †l,`@€%,R"&LUC$d€*Y€*YH €Q€*	Y€
+*
+
+YJ
+WßDCYJ]# T2 
+4
+Qc„
+ˆ:€%*@)@„h`
+€‡6€62 2424Qcˆn" !€fk &$&R+G$&R+±"€h4°"‚4Â‡²€V°GÃ³²²6„YQ\]²U"€lï€ÜDG##4eƒ²€V°GÃ³²²6„YQ\]²U"xï€ÜDG##4eQcX	
+ €{@°c $€$P°±°Qc
