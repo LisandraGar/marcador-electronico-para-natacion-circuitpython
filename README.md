@@ -1,12 +1,14 @@
-# Marcador Electrónico para Natación
+# Marcador Electrónico para Natación — Firmware CircuitPython
 
-Panel LED matricial que muestra tiempos, cronómetro y puntuaciones de natación en tiempo real vía MQTT. Basado en **CircuitPython** sobre un **Adafruit MatrixPortal ESP32-S3** con pantalla LED RGB de **128x64**.
+Firmware principal del marcador electrónico de natación: un panel LED matricial que muestra tiempos, cronómetro y puntuaciones en tiempo real vía MQTT. Está basado en **CircuitPython** sobre una placa **Adafruit MatrixPortal S3 (ESP32-S3)** con pantalla LED RGB de **128x64**.
+
+Este repo es la versión completa del firmware (con módulos de cronómetro, RTC, gestión de tópicos y persistencia de datos). El repo `marcador-electronico-para-natacion` contiene la versión prototipo.
 
 ---
 
 ## Configuración (`settings.toml`)
 
-Antes de usar, edita el archivo `settings.toml` en la raíz del dispositivo con los siguientes valores:
+Antes de usar, edita el archivo `settings.toml` en la raíz del dispositivo (misma carpeta donde vive `code.py`):
 
 ```toml
 CIRCUITPY_WIFI_SSID = "red_wifi"
@@ -29,18 +31,20 @@ MQTT_SSL = "true"
 | `MQTT_PASSWORD` | Contraseña del broker MQTT |
 | `MQTT_SSL` | `"true"` para usar SSL/TLS, `"false"` para conexión sin cifrar |
 
+> **Nota de seguridad:** no subas credenciales reales a repositorios públicos. Usa variables de entorno o borra los secretos antes de hacer commit.
+
 ---
 
 ## Hardware Requerido
 
-- ESP32-S3 con CircuitPython
+- Adafruit MatrixPortal S3 con ESP32-S3 y CircuitPython 10
 - Matriz LED RGB 128x64 (configurada como 2 tiles de 64x32)
-- Fuente de alimentación de 5V 40Amp
+- Fuente de alimentación de 5V y amperaje suficiente para la matriz
 - Módulo RTC DS1307
 - Sensor LM35 para captar temperatura ambiente
 - Botones pulsadores
 
-## Dependencias (liberías CircuitPython)
+## Dependencias (librerías CircuitPython)
 
 Todas están incluidas en la carpeta `lib/`:
 
@@ -148,6 +152,7 @@ Controlado mediante el tópico `esp32s3/chrono`:
 │   ├── adafruit_minimqtt/
 │   ├── ...
 │   └── utils/           # Código fuente de la aplicación
+│       ├── __init__.py
 │       ├── main.py              # Bucle principal
 │       ├── config.py            # Configuración desde settings.toml
 │       ├── mqtt_client.py       # Cliente MQTT con callbacks
@@ -180,3 +185,9 @@ Se ajustan `width`, `height` y `tile_rows` según tu configuración de paneles L
 En `lib/utils/display_content.py` se usa `line_spacing=10` para la pantalla principal. Este valor se cambia si usas una matriz de distinto tamaño.
 
 ---
+
+## Relación con los otros repositorios
+
+- **CircuitPython** (este repo): firmware completo del marcador.
+- **Frontend** (`marcador-electronico-para-natacion-frontend`): interfaz web de control vía MQTT.
+- **General** (`marcador-electronico-para-natacion`): prototipo inicial del firmware.

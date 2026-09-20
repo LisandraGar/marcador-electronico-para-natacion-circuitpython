@@ -8,7 +8,7 @@ import terminalio
 font = bitmap_font.load_font("/fonts/12-Fixed-SemiCond.bdf")
 
 # Configurar la pantalla
-matrix = Matrix(width=128, height=64, bit_depth=1, tile_rows=2)
+matrix = Matrix(width=128, height=32, bit_depth=1, tile_rows=1)
 display = matrix.display
 
 # Función para mostrar texto en la matriz

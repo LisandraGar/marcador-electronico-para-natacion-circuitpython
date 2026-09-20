@@ -54,7 +54,7 @@ def main():
             # Actualizamos de la pantalla
             scores = get_scores()
             lines = get_display_content(bandera, time_data, chrono, scores, mqtt_client)
-            show_multiline(lines, x=0, y=2, color=get_color(), line_spacing=10)
+            show_multiline(lines, x=0, y=2, color=get_color(), line_spacing=9)
 
         except Exception as e:
             print(f"Error en main: {e}")
