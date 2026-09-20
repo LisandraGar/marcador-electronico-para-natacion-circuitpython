@@ -3,6 +3,7 @@ import utils.config as config
 from utils.file_system import guarda_valor, lee_valor
 from utils.rtc import init_timer, get_hours, get_minutes, get_seconds, get_ampm
 from utils.chrono import start_chrono, stop_chrono, clr_chrono, get_chrono_formatted
+from utils.buzzer import buzzer
 
 
 def set_time_topic(msg, mqtt=None):
@@ -67,34 +68,55 @@ def get_users_topic(msg, mqtt):
     # Además enviamos la hora y temperatura
     send_timetemp(mqtt)
 
-def chrono_topic(msg, mqtt):
-    msg_pair = msg.split(':')
+def record_chrono_stop(id_num, mqtt=None):
+    """
+    Detiene el cronómetro para el nadador, formatea su tiempo,
+    actualiza la lista de records en almacenamiento y la publica por MQTT.
+    """
+    stop_chrono(id_num)
     
-    if msg_pair[0] == 'play_chrono':
-        start_chrono(msg_pair[1])
-    elif msg_pair[0] == 'pause_chrono':
-        stop_chrono(msg_pair[1])
-        
-        time = get_chrono_formatted()
-        json_txt = json.dumps(time)
-        
-        scores = json.loads(lee_valor('data.txt', 'scores'))
-        
-        exist = False
-        for i, score in enumerate(scores):
-            curr_score = json.loads(score)
-            if curr_score['id'] == msg_pair[1]:
+    time_res = get_chrono_formatted()
+    json_txt = json.dumps(time_res)
+    
+    try:
+        scores_raw = lee_valor('data.txt', 'scores')
+        scores = json.loads(scores_raw) if scores_raw else []
+    except Exception:
+        scores = []
+    
+    exist = False
+    for i, score in enumerate(scores):
+        try:
+            curr_score = json.loads(score) if isinstance(score, str) else score
+            if str(curr_score.get('id')) == str(id_num):
                 scores[i] = json_txt
                 exist = True
             else:
-                scores[i] = score
-        
-        if not exist:
-            scores.append(json_txt)
-        
-        scores_txt = json.dumps(scores)
+                scores[i] = score if isinstance(score, str) else json.dumps(score)
+        except Exception:
+            scores[i] = score
+    
+    if not exist:
+        scores.append(json_txt)
+    
+    scores_txt = json.dumps(scores)
+    if mqtt:
         mqtt.publish(config.TOPIC_SENDSCORES, scores_txt)
-        guarda_valor('data.txt', 'scores', scores_txt)
+        mqtt.publish(config.TOPIC_SENDCHRONO, json_txt)
+    guarda_valor('data.txt', 'scores', scores_txt)
+    return time_res
+
+def chrono_topic(msg, mqtt):
+    msg_pair = msg.split(':')
+    command = msg_pair[0]
+    swimmer_id = msg_pair[1] if len(msg_pair) > 1 else '0'
+    
+    if command == 'play_chrono':
+        start_chrono(swimmer_id)
+        buzzer.sound_start()
+    elif command == 'pause_chrono':
+        record_chrono_stop(swimmer_id, mqtt)
+        buzzer.beep(0.2)
 
 
 def get_scores_topic(msg, mqtt):

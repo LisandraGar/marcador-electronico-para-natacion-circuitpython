@@ -30,6 +30,10 @@ MQTT_SSL = "true"
 | `MQTT_USERNAME` | Usuario del broker MQTT |
 | `MQTT_PASSWORD` | Contraseña del broker MQTT |
 | `MQTT_SSL` | `"true"` para usar SSL/TLS, `"false"` para conexión sin cifrar |
+| `TOUCH_PIN` | Pin del sensor capacitivo sumergible de llegada (por defecto `"A1"`) |
+| `TOUCH_MODE` | `"digital"` (módulo con salida digital) o `"capacitive"` (touchio nativo) |
+| `BUZZER_PIN` | Pin de la bocina / zumbador (por defecto `"A2"`) |
+| `BUZZER_ENABLED` | `"true"` para habilitar sonido de salida y llegada de nadador |
 
 > **Nota de seguridad:** no subas credenciales reales a repositorios públicos. Usa variables de entorno o borra los secretos antes de hacer commit.
 
@@ -38,11 +42,12 @@ MQTT_SSL = "true"
 ## Hardware Requerido
 
 - Adafruit MatrixPortal S3 con ESP32-S3 y CircuitPython 10
-- Matriz LED RGB 128x64 (configurada como 2 tiles de 64x32)
-- Fuente de alimentación de 5V y amperaje suficiente para la matriz
-- Módulo RTC DS1307
+- Matriz LED RGB 128x32
+- Sensor capacitivo sumergible de placa de llegada (pin `A1`)
+- Bocina / Buzzer para señal acústica de inicio y llegada (pin `A2`)
+- Módulo RTC DS1307 (I2C)
 - Sensor LM35 para captar temperatura ambiente
-- Botones pulsadores
+- Fuente de alimentación de 5V y amperaje suficiente para la matriz
 
 ## Dependencias (librerías CircuitPython)
 
