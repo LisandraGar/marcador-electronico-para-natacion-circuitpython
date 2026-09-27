@@ -16,9 +16,11 @@ HARDWARE_TARGET = "pcb_lisa"
 BUZZER_PIN = "IO4"
 BUZZER_ENABLED = "true"
 
-# Placa de llegada / Botón de toque (U6 en GPIO15)
-TOUCH_PIN = "IO15"
-TOUCH_MODE = "digital"
+# Sensores / Botones capacitivos de llegada (Carriles o Botones Táctiles)
+TOUCH_PIN = "IO15"      # Sensor 1 (Pulsador U6 / Carril 1)
+TOUCH_PIN_2 = "IO10"    # Sensor 2 (Botón Capacitivo Carril 2 en GPIO10)
+TOUCH_PIN_3 = "IO11"    # Sensor 3 (Botón Capacitivo Carril 3 en GPIO11)
+TOUCH_MODE = "digital"  # "capacitive" (touchio nativo) o "digital" (módulo sensor)
 
 # Sensor de temperatura analógico LM35 (Pin 5 / ADC1_CH4)
 TEMP_PIN = "IO5"

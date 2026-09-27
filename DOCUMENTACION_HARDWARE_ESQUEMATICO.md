@@ -103,8 +103,8 @@ El esquemático utiliza un módulo **ESP32-S3-DevKitC-1** en encapsulado de 44 p
 | **13** | `GPIO03` | NC | — | — | Pin libre / reserva. |
 | **14** | `GPIO46` | NC | — | — | Pin libre / reserva. |
 | **15** | `GPIO09` | *Línea I2C SCL* | Salida Clock | Pin 4 DS1307 | **Línea de reloj serie I2C (SCL) para el RTC**. |
-| **16** | `GPIO10` | NC | — | — | Pin libre / reserva. |
-| **17** | `GPIO11` | NC | — | — | Pin libre / reserva. |
+| **16** | `GPIO10` | NC / Header Ext. | Touch / Digital IN | Sensor Táctil Carril 2 | **Sensor capacitivo (Touch9) para detección de llegada carril 2**. |
+| **17** | `GPIO11` | NC / Header Ext. | Touch / Digital IN | Sensor Táctil Carril 3 | **Sensor capacitivo (Touch10) para detección de llegada carril 3**. |
 | **18** | `GPIO12` | NC | — | — | Pin libre / reserva. |
 | **19** | `GPIO13` | NC | — | — | Pin libre / reserva. |
 | **20** | `GPIO14` | `OE_3V` | Digital OUT | U3: Pin 9 (A7) | **Habilitación de salida (OE) de la matriz HUB75**. |
@@ -324,6 +324,23 @@ El conector J2 es un cabezal macho de 2x8 pines (IDC-16). La siguiente tabla mue
 
 ---
 
+### 4.7. Sensores Capacitivos / Táctiles de Llegada Adicionales (GPIO10 y GPIO11)
+
+Para ampliar la capacidad de registro del cronómetro a competencias multicanal o disponer de placas de llegada independientes para carriles adicionales, se han integrado y mapeado en firmware dos canales táctiles en los pines libres del DevKit:
+- **Sensor 2 / Carril 2:** Conectado a **`GPIO10`** (U1 Pin 16, canal táctil nativo **Touch9**).
+- **Sensor 3 / Carril 3:** Conectado a **`GPIO11`** (U1 Pin 17, canal táctil nativo **Touch10**).
+
+#### Características Técnicas:
+1. **Modo Dual (Digital / Capacitivo):**
+   - **Modo Capacitivo (`touchio.TouchIn`):** Permite conectar directamente una placa metálica sumergible/táctil sin componentes activos adicionales, aprovechando la circuitería analógica capacitiva integrada en el silicio del ESP32-S3.
+   - **Modo Digital (`digitalio.DigitalInOut`):** Permite conectar módulos sensores táctiles acondicionados externos (ej. TTP223) con salida activa en nivel alto (HIGH).
+2. **Filtrado Antirrebote y de Oleaje:**
+   - Cada sensor implementa una máquina de estados independiente con un período de enfriamiento (*cooldown*) de **1500 ms** para discriminar el toque intencional del nadador del oleaje residual.
+3. **Respuesta Acústica y Telemetría:**
+   - La activación de cualquiera de los sensores (Carril 1/IO15, Carril 2/IO10, Carril 3/IO11) detiene el cronómetro en curso, dispara la señal acústica de llegada mediante `BuzzerController` (`BUZZER1`) y publica la telemetría correspondiente al broker MQTT.
+
+---
+
 ## 5. Comparativa Crítica: Prototipo Inicial vs. PCB Dedicada
 
 | Característica | Prototipo Comercial (MatrixPortal S3) | PCB Dedicada (`PCB_MARCADOR_LISA` V1.0) |
@@ -335,6 +352,7 @@ El conector J2 es un cabezal macho de 2x8 pines (IDC-16). La siguiente tabla mue
 | **Medición de Temperatura** | Requiere cableado externo en protoboard | Conexión directa del sensor LM35 al pin **`GPIO05`** |
 | **RTC Hardware** | I2C en pines predeterminados STEMMA (SDA=IO15, SCL=IO16) | Conexión directa en pines dedicados **`GPIO08` (SDA)** y **`GPIO09` (SCL)** |
 | **Pulsadores Físicos** | Botones UP/DOWN miniatura del MatrixPortal | 3x Pulsadores táctiles dedicados en **`GPIO15`**, **`GPIO16`**, **`GPIO17`** |
+| **Sensores de Llegada** | 1 sensor básico en A1 | 3 canales independientes (IO15, IO10 Touch9, IO11 Touch10) |
 | **Confiabilidad Mecánica** | Susceptible a desconexión accidental de cables jumper | Pistas de cobre directas en placa impresa, conector IDC HUB75 firme |
 
 ---
@@ -359,8 +377,10 @@ MQTT_SSL = "true"
 
 # Pines de la PCB a medida
 BUZZER_PIN = "IO4"
-TOUCH_PIN = "IO15"       # Botón U6 configurado como respaldo de llegada
-TOUCH_MODE = "digital"
+TOUCH_PIN = "IO15"         # Sensor 1 / Carril 1 (o pulsador U6)
+TOUCH_MODE = "digital"     # "digital" o "capacitive"
+TOUCH_PIN_2 = "IO10"       # Sensor 2 / Carril 2 (Touch9 nativo)
+TOUCH_PIN_3 = "IO11"       # Sensor 3 / Carril 3 (Touch10 nativo)
 
 # Módulos adicionales de la PCB
 TEMP_PIN = "IO5"

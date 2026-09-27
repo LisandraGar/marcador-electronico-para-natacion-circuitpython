@@ -15,7 +15,7 @@ from utils.config import TOPIC_SENDTIME, TOPIC_SENDCHRONO
 from utils.chrono import get_chrono_formatted, get_chrono_status
 from utils.time_updates import handle_time_updates
 from utils.display_content import get_display_content
-from utils.touch_sensor import arrival_sensor
+from utils.touch_sensor import arrival_sensor, touch_sensors
 from utils.buzzer import buzzer
 from utils.buttons import buttons
 
@@ -38,16 +38,17 @@ def main():
         try:
             mqtt_client.loop()
 
-            # Comprobar sensor capacitivo sumergible de llegada
-            if arrival_sensor.check_arrival():
-                if get_chrono_status() == 'started':
-                    chrono_now = get_chrono_formatted()
-                    active_id = chrono_now.get("id", "0")
-                    print(f"🏊 ¡LLEGADA DETECTADA POR SENSOR! Nadador #{active_id}")
-                    buzzer.sound_arrival()
-                    record_chrono_stop(active_id, mqtt_client)
-                else:
-                    buzzer.beep(0.08)
+            # Comprobar sensores/botones capacitivos de llegada (Sensor 1 en IO15, Sensor 2 en IO10, Sensor 3 en IO11)
+            for idx, sensor in enumerate(touch_sensors, start=1):
+                if sensor.check_arrival():
+                    if get_chrono_status() == 'started':
+                        chrono_now = get_chrono_formatted()
+                        active_id = chrono_now.get("id", str(idx))
+                        print(f"🏊 ¡LLEGADA DETECTADA POR {sensor.label}! Nadador #{active_id}")
+                        buzzer.sound_arrival()
+                        record_chrono_stop(active_id, mqtt_client)
+                    else:
+                        buzzer.beep(0.08)
 
             # Comprobar pulsadores físicos de la PCB (U6, U7, U8)
             b1_press, b2_press, b3_press = buttons.read_buttons()

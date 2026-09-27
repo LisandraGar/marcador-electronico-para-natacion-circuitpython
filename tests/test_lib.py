@@ -69,7 +69,7 @@ class MockMatrix:
         self.display.root_group = None
 
 # Inyectar mocks antes de importar módulos de CircuitPython
-VALID_PINS = ["A1", "A2", "SDA", "SCL", "IO4", "GPIO4", "IO5", "IO8", "IO9", "IO15", "IO16", "IO17"]
+VALID_PINS = ["A1", "A2", "SDA", "SCL", "IO4", "GPIO4", "IO5", "IO8", "IO9", "IO10", "GPIO10", "IO11", "GPIO11", "IO15", "IO16", "IO17"]
 mock_board = MagicMock(spec=VALID_PINS)
 mock_board.A1 = "PIN_A1"
 mock_board.A2 = "PIN_A2"
@@ -80,6 +80,10 @@ mock_board.GPIO4 = "PIN_GPIO4"
 mock_board.IO5 = "PIN_IO5"
 mock_board.IO8 = "PIN_IO8"
 mock_board.IO9 = "PIN_IO9"
+mock_board.IO10 = "PIN_IO10"
+mock_board.GPIO10 = "PIN_GPIO10"
+mock_board.IO11 = "PIN_IO11"
+mock_board.GPIO11 = "PIN_GPIO11"
 mock_board.IO15 = "PIN_IO15"
 mock_board.IO16 = "PIN_IO16"
 mock_board.IO17 = "PIN_IO17"
@@ -221,6 +225,8 @@ class TestCircuitPythonLib(unittest.TestCase):
         """Verificar valores predeterminados y variables de configuración"""
         self.assertEqual(self.config.touch_pin_name, "A1")
         self.assertEqual(self.config.touch_mode, "digital")
+        self.assertEqual(self.config.touch_pin_2_name, "IO10")
+        self.assertEqual(self.config.touch_pin_3_name, "IO11")
         self.assertEqual(self.config.buzzer_pin_name, "A2")
         self.assertTrue(self.config.buzzer_enabled)
         self.assertEqual(self.config.TOPIC_CHRONO, "esp32s3/chrono")
@@ -392,6 +398,10 @@ class TestCircuitPythonLib(unittest.TestCase):
         self.assertEqual(self.config.get_board_pin("IO15"), "PIN_IO15")
         self.assertEqual(self.config.get_board_pin("IO8"), "PIN_IO8")
         self.assertEqual(self.config.get_board_pin("IO9"), "PIN_IO9")
+        self.assertEqual(self.config.get_board_pin("IO10"), "PIN_IO10")
+        self.assertEqual(self.config.get_board_pin("GPIO10"), "PIN_GPIO10")
+        self.assertEqual(self.config.get_board_pin("IO11"), "PIN_IO11")
+        self.assertEqual(self.config.get_board_pin("GPIO11"), "PIN_GPIO11")
         self.assertIsNone(self.config.get_board_pin("PIN_INEXISTENTE_XYZ"))
         self.assertIsNone(self.config.get_board_pin(""))
 
@@ -452,6 +462,38 @@ class TestCircuitPythonLib(unittest.TestCase):
         self.assertEqual(self.rtc.get_hours(), 9)
         self.assertEqual(self.rtc.get_minutes(), 45)
         self.assertEqual(self.rtc.get_ampm(), "AM")
+
+    def test_15_multiple_capacitive_touch_sensors(self):
+        """Verificar soporte y detección independiente de 3 sensores táctiles (IO15, IO10, IO11)"""
+        # Verificar instancias exportadas en touch_mod
+        self.assertIsNotNone(self.touch_mod.arrival_sensor)
+        self.assertIsNotNone(self.touch_mod.touch_sensor_2)
+        self.assertIsNotNone(self.touch_mod.touch_sensor_3)
+        self.assertEqual(len(self.touch_mod.touch_sensors), 3)
+
+        # Crear sensores para IO10 e IO11 en modo capacitivo
+        sensor_io10 = self.touch_mod.ArrivalTouchSensor(pin_name="IO10", mode="capacitive", label="Carril 2")
+        sensor_io11 = self.touch_mod.ArrivalTouchSensor(pin_name="IO11", mode="capacitive", label="Carril 3")
+        self.assertIsNotNone(sensor_io10.device)
+        self.assertIsNotNone(sensor_io11.device)
+
+        # Probar detección independiente en IO10
+        sensor_io10.device.value = False
+        _current_ticks[0] = 1000
+        self.assertFalse(sensor_io10.check_arrival())
+
+        sensor_io10.device.value = True
+        _current_ticks[0] = 2000
+        self.assertTrue(sensor_io10.check_arrival(), "Debe registrar llegada en Carril 2 (IO10)")
+
+        # Probar detección independiente en IO11
+        sensor_io11.device.value = False
+        _current_ticks[0] = 2100
+        self.assertFalse(sensor_io11.check_arrival())
+
+        sensor_io11.device.value = True
+        _current_ticks[0] = 3000
+        self.assertTrue(sensor_io11.check_arrival(), "Debe registrar llegada en Carril 3 (IO11)")
 
 if __name__ == "__main__":
     print("\n========================================================")

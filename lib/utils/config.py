@@ -41,6 +41,10 @@ default_touch = "IO15" if hardware_target == "pcb_lisa" else "A1"
 
 touch_pin_name = os.getenv("TOUCH_PIN", default_touch)
 touch_mode = os.getenv("TOUCH_MODE", "digital")
+touch_pin_2_name = os.getenv("TOUCH_PIN_2", "IO10")
+touch_pin_3_name = os.getenv("TOUCH_PIN_3", "IO11")
+touch_mode_2 = os.getenv("TOUCH_MODE_2", touch_mode)
+touch_mode_3 = os.getenv("TOUCH_MODE_3", touch_mode)
 buzzer_pin_name = os.getenv("BUZZER_PIN", default_buzzer)
 buzzer_enabled = os.getenv("BUZZER_ENABLED", "true") == "true"
 
