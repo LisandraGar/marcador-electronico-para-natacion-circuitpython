@@ -54,10 +54,10 @@ def main():
 
     # 2. Comprobar contenido sensible agregado (+)
     try:
-        diff_output = subprocess.check_output(
-            ["git", "diff", "--cached", "-U0"],
-            universal_newlines=True
+        diff_raw = subprocess.check_output(
+            ["git", "diff", "--cached", "-U0"]
         )
+        diff_output = diff_raw.decode("utf-8", errors="replace")
     except Exception as e:
         print(f"Error comprobando diff: {e}", file=sys.stderr)
         sys.exit(1)

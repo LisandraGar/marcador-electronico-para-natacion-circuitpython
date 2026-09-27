@@ -125,28 +125,40 @@ def get_scores_topic(msg, mqtt):
     
 
 def del_score_topic(msg, mqtt=None):
-    scores_raw = json.loads(lee_valor('data.txt', 'scores'))
+    try:
+        val = lee_valor('data.txt', 'scores')
+        scores_raw = json.loads(val) if val else []
+    except Exception:
+        scores_raw = []
     
     nuevos_scores = []
     for score in scores_raw:
-        curr_score = json.loads(score)
-        
-        if str(curr_score['id']) != msg:
-            nuevos_scores.append(json.dumps(curr_score))
+        try:
+            curr_score = json.loads(score) if isinstance(score, str) else score
+            if str(curr_score.get('id', '')) != str(msg):
+                nuevos_scores.append(json.dumps(curr_score) if isinstance(curr_score, dict) else score)
+        except Exception:
+            pass
     
     guarda_valor('data.txt', 'scores', json.dumps(nuevos_scores))
     clr_chrono() # Borramos el cronómetro de la pantalla
 
 
 def del_record_topic(msg, mqtt):
-    records_raw = json.loads(lee_valor('data.txt', 'records'))
+    try:
+        val = lee_valor('data.txt', 'records')
+        records_raw = json.loads(val) if val else []
+    except Exception:
+        records_raw = []
     
     actualizados = []
     for record in records_raw:
-        curr_record = json.loads(record)
-        
-        if str(curr_record['id']) != msg:
-            actualizados.append(json.dumps(curr_record))
+        try:
+            curr_record = json.loads(record) if isinstance(record, str) else record
+            if str(curr_record.get('id', '')) != str(msg):
+                actualizados.append(json.dumps(curr_record) if isinstance(curr_record, dict) else record)
+        except Exception:
+            pass
         
     guarda_valor('data.txt', 'records', json.dumps(actualizados))
     
@@ -155,14 +167,24 @@ def del_record_topic(msg, mqtt):
     
 
 def get_scores():
-    scores_raw = json.loads(lee_valor('data.txt', 'scores'))
+    try:
+        val = lee_valor('data.txt', 'scores')
+        scores_raw = json.loads(val) if val else []
+    except Exception:
+        return []
     
     scores = []
     for score in scores_raw:
-        curr_score = json.loads(score)
-        scores.append(curr_score)
+        try:
+            curr_score = json.loads(score) if isinstance(score, str) else score
+            scores.append(curr_score)
+        except Exception:
+            pass
         
-    scores.sort(key=lambda x: int(x["id"]))
+    try:
+        scores.sort(key=lambda x: int(x.get("id", 0)))
+    except Exception:
+        pass
     
     return scores
 
