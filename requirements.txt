@@ -1,0 +1,9 @@
+# Dependencias de Python para desarrollo y pruebas del Firmware CircuitPython
+# Instalar con: pip install -r requirements.txt
+
+# Suite de pruebas unitarias y mocks de hardware
+pytest>=8.0.0
+pytest-shutil>=1.8.0
+
+# Generador de informes académicos en PDF (si se requiere compilar reportes)
+reportlab>=4.0.0
