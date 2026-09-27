@@ -17,6 +17,7 @@ from utils.time_updates import handle_time_updates
 from utils.display_content import get_display_content
 from utils.touch_sensor import arrival_sensor
 from utils.buzzer import buzzer
+from utils.buttons import buttons
 
 mqtt_client = MQTTClient()
 
@@ -48,6 +49,38 @@ def main():
                 else:
                     buzzer.beep(0.08)
 
+            # Comprobar pulsadores físicos de la PCB (U6, U7, U8)
+            b1_press, b2_press, b3_press = buttons.read_buttons()
+            if b1_press:
+                # Pulsador U6 (GPIO15): Respaldo manual de toque/llegada
+                if get_chrono_status() == 'started':
+                    chrono_now = get_chrono_formatted()
+                    active_id = chrono_now.get("id", "0")
+                    print(f"🏊 ¡LLEGADA POR BOTÓN U6! Nadador #{active_id}")
+                    buzzer.sound_arrival()
+                    record_chrono_stop(active_id, mqtt_client)
+                else:
+                    buzzer.beep(0.08)
+
+            if b2_press:
+                # Pulsador U7 (GPIO16): Control local Play/Pause cronómetro
+                if get_chrono_status() == 'started':
+                    chrono_now = get_chrono_formatted()
+                    record_chrono_stop(chrono_now.get("id", "0"), mqtt_client)
+                    buzzer.beep(0.1)
+                else:
+                    from utils.chrono import start_chrono
+                    start_chrono(1)
+                    buzzer.sound_start()
+
+            if b3_press:
+                # Pulsador U8 (GPIO17): Alternar modo de pantalla (show <-> chrono)
+                from utils.topic_manager import set_screentype_topic
+                curr_type = get_screentype()
+                next_type = "show" if curr_type == "chrono" else "chrono"
+                set_screentype_topic(next_type)
+                buzzer.beep(0.05)
+
             # Agrupamos los datos para que sean fáciles de pasar
             time_data = {
                 "hours": get_hours(), "minutes": get_minutes(), 
@@ -56,7 +89,16 @@ def main():
             chrono = get_chrono_formatted()
             status = get_chrono_status()
             
-            # Solo publicamos la hora si cambia el minuto
+            # Solo publicamos la hora si cambia el minuto (y actualizamos temperatura desde LM35)
+            if m_antes != time_data["minutes"]:
+                try:
+                    from utils.temp_sensor import temp_sensor
+                    from utils.file_system import guarda_valor
+                    if temp_sensor.device is not None:
+                        real_t = str(temp_sensor.get_temperature_int())
+                        guarda_valor('data.txt', 'temp', real_t)
+                except Exception:
+                    pass
             m_antes = handle_time_updates(mqtt_client, time_data["minutes"], m_antes, time_data)
 
             # Enviamos el estado del cronómetro en cada segundo solo si está activo

@@ -1,8 +1,33 @@
 CIRCUITPY_WIFI_SSID = ""
 CIRCUITPY_WIFI_PASSWORD = ""
 
-MQTT_BROKER = "bad771df41604666a6a56e78d7184c9c.s1.eu.hivemq.cloud"
+MQTT_BROKER = "90ee163ce96e47e2ab0300d92f22e9d5.s1.eu.hivemq.cloud"
 MQTT_PORT = 8883
-MQTT_USERNAME = ""
+MQTT_USERNAME = "marcador_esp32"
 MQTT_PASSWORD = ""
 MQTT_SSL = "true"
+
+# ==========================================
+# Configuración de Hardware: PCB_MARCADOR_LISA V1.0
+# ==========================================
+HARDWARE_TARGET = "pcb_lisa"
+
+# Señalización acústica (Pin 4 con driver Q1 MMBT4401 y LED1)
+BUZZER_PIN = "IO4"
+BUZZER_ENABLED = "true"
+
+# Placa de llegada / Botón de toque (U6 en GPIO15)
+TOUCH_PIN = "IO15"
+TOUCH_MODE = "digital"
+
+# Sensor de temperatura analógico LM35 (Pin 5 / ADC1_CH4)
+TEMP_PIN = "IO5"
+
+# Reloj en tiempo real RTC DS1307 por hardware I2C
+RTC_SDA_PIN = "IO8"
+RTC_SCL_PIN = "IO9"
+
+# Botonera local en borde de piscina
+BTN_1_PIN = "IO15"
+BTN_2_PIN = "IO16"
+BTN_3_PIN = "IO17"

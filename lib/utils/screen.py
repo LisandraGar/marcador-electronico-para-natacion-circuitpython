@@ -7,8 +7,40 @@ import terminalio
 # Inicializacion de variables
 font = bitmap_font.load_font("/fonts/12-Fixed-SemiCond.bdf")
 
+import utils.config as config
+
+def create_matrix_display():
+    hw = getattr(config, 'hardware_target', 'auto')
+    if hw == 'pcb_lisa' or (config.get_board_pin('IO42') is not None and config.get_board_pin('A1') is None):
+        try:
+            r1 = config.get_board_pin('IO42')
+            g1 = config.get_board_pin('IO41')
+            b1 = config.get_board_pin('IO40')
+            r2 = config.get_board_pin('IO38')
+            g2 = config.get_board_pin('IO39')
+            b2 = config.get_board_pin('IO37')
+            clk = config.get_board_pin('IO2')
+            lat = config.get_board_pin('IO47')
+            oe = config.get_board_pin('IO14')
+            a = config.get_board_pin('IO45')
+            b = config.get_board_pin('IO36')
+            c = config.get_board_pin('IO48')
+            d = config.get_board_pin('IO35')
+            if all([r1, g1, b1, r2, g2, b2, clk, lat, oe, a, b, c, d]):
+                print("🖥️ Inicializando HUB75 con mapeo de pines dedicado PCB_MARCADOR_LISA...")
+                return Matrix(
+                    width=128, height=32, bit_depth=1, tile_rows=1,
+                    rgb_pins=[r1, g1, b1, r2, g2, b2],
+                    clock_pin=clk, latch_pin=lat, output_enable_pin=oe,
+                    address_pins=[a, b, c, d]
+                )
+        except Exception as e:
+            pass
+
+    return Matrix(width=128, height=32, bit_depth=1, tile_rows=1)
+
 # Configurar la pantalla
-matrix = Matrix(width=128, height=32, bit_depth=1, tile_rows=1)
+matrix = create_matrix_display()
 display = matrix.display
 
 # Función para mostrar texto en la matriz

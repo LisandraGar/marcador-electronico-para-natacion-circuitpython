@@ -19,7 +19,7 @@ def set_temp_topic(msg, mqtt=None):
     
 def get_temp():
     temp = lee_valor('data.txt', 'temp')
-    return temp
+    return temp if temp else "25"
 
 
 def set_color_topic(msg, mqtt=None):

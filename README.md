@@ -30,24 +30,39 @@ MQTT_SSL = "true"
 | `MQTT_USERNAME` | Usuario del broker MQTT |
 | `MQTT_PASSWORD` | Contraseña del broker MQTT |
 | `MQTT_SSL` | `"true"` para usar SSL/TLS, `"false"` para conexión sin cifrar |
-| `TOUCH_PIN` | Pin del sensor capacitivo sumergible de llegada (por defecto `"A1"`) |
+| `HARDWARE_TARGET` | `"pcb_lisa"` para tarjeta dedicada de tesis, o `"matrixportal"` para prototipo |
+| `TOUCH_PIN` | Pin de llegada / toque (`"IO15"` en PCB_MARCADOR_LISA, `"A1"` en MatrixPortal) |
 | `TOUCH_MODE` | `"digital"` (módulo con salida digital) o `"capacitive"` (touchio nativo) |
-| `BUZZER_PIN` | Pin de la bocina / zumbador (por defecto `"A2"`) |
+| `BUZZER_PIN` | Pin de la bocina (`"IO4"` en PCB_MARCADOR_LISA, `"A2"` en MatrixPortal) |
 | `BUZZER_ENABLED` | `"true"` para habilitar sonido de salida y llegada de nadador |
+| `TEMP_PIN` | Pin sensor LM35 (`"IO5"` por defecto en PCB_MARCADOR_LISA) |
+| `RTC_SDA_PIN` / `RTC_SCL_PIN` | Pines I2C para RTC DS1307 (`"IO8"` y `"IO9"`) |
+| `BTN_1_PIN` / `BTN_2_PIN` / `BTN_3_PIN` | Pines pulsadores locales U6, U7, U8 (`"IO15"`, `"IO16"`, `"IO17"`) |
 
 > **Nota de seguridad:** no subas credenciales reales a repositorios públicos. Usa variables de entorno o borra los secretos antes de hacer commit.
 
 ---
 
-## Hardware Requerido
+## Hardware y Arquitectura
 
+El firmware es compatible con dos variantes de hardware:
+
+### 1. Tarjeta PCB Dedicada de Tesis: `PCB_MARCADOR_LISA` (V1.0)
+*Documentación completa en [DOCUMENTACION_HARDWARE_ESQUEMATICO.md](DOCUMENTACION_HARDWARE_ESQUEMATICO.md)*.
+- **Microcontrolador Central:** ESP32-S3 DevKitC-1 (240 MHz, Dual Core, 44 pines).
+- **Adaptadores de Nivel Lógico:** 2x **74HC245N** (Level Shifter 3.3V a 5.0V para el bus HUB75).
+- **Matriz LED RGB:** Conector directo HUB75 IDC 2x8 (128x32 píxeles).
+- **Bocina y Alerta Visual:** Pin **`GPIO04`** excita transistor NPN **MMBT4401** (Q1), zumbador de 5V y diodo **LED1** testigo con limitador de 51 Ω.
+- **Sensor de Temperatura:** Sensor analógico **LM35** en pin **`GPIO05`** (ADC1_CH4).
+- **Reloj de Tiempo Real (RTC):** Módulo **DS1307** por hardware I2C (**SDA = `GPIO08`**, **SCL = `GPIO09`**) con batería CR2032.
+- **Botonera Local de Control:** 3x pulsadores táctiles (**U6 = `GPIO15`**, **U7 = `GPIO16`**, **U8 = `GPIO17`**) para llegada de respaldo, inicio/pausa de cronómetro y alternancia de vistas.
+
+### 2. Prototipo Comercial (Adafruit MatrixPortal S3)
 - Adafruit MatrixPortal S3 con ESP32-S3 y CircuitPython 10
 - Matriz LED RGB 128x32
-- Sensor capacitivo sumergible de placa de llegada (pin `A1`)
-- Bocina / Buzzer para señal acústica de inicio y llegada (pin `A2`)
-- Módulo RTC DS1307 (I2C)
-- Sensor LM35 para captar temperatura ambiente
-- Fuente de alimentación de 5V y amperaje suficiente para la matriz
+- Sensor capacitivo o pulsador en pin `A1`
+- Bocina / Buzzer en pin `A2`
+- Fuente de alimentación de 5V y amperaje suficiente para la matriz (mínimo 4A recomendado)
 
 ## Dependencias (librerías CircuitPython)
 

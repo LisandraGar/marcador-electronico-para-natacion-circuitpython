@@ -69,11 +69,20 @@ class MockMatrix:
         self.display.root_group = None
 
 # Inyectar mocks antes de importar módulos de CircuitPython
-mock_board = MagicMock()
+VALID_PINS = ["A1", "A2", "SDA", "SCL", "IO4", "GPIO4", "IO5", "IO8", "IO9", "IO15", "IO16", "IO17"]
+mock_board = MagicMock(spec=VALID_PINS)
 mock_board.A1 = "PIN_A1"
 mock_board.A2 = "PIN_A2"
 mock_board.SDA = "PIN_SDA"
 mock_board.SCL = "PIN_SCL"
+mock_board.IO4 = "PIN_IO4"
+mock_board.GPIO4 = "PIN_GPIO4"
+mock_board.IO5 = "PIN_IO5"
+mock_board.IO8 = "PIN_IO8"
+mock_board.IO9 = "PIN_IO9"
+mock_board.IO15 = "PIN_IO15"
+mock_board.IO16 = "PIN_IO16"
+mock_board.IO17 = "PIN_IO17"
 
 mock_digitalio = MagicMock()
 mock_digitalio.Direction = MockDirection
@@ -110,11 +119,32 @@ mock_micropython.const = lambda x: x
 
 mock_storage = MagicMock()
 
+class MockAnalogIn:
+    def __init__(self, pin):
+        self.pin = pin
+        self.value = 5557  # ~28.0 °C
+        self.reference_voltage = 3.3
+
+mock_analogio = MagicMock()
+mock_analogio.AnalogIn = MockAnalogIn
+
+mock_busio = MagicMock()
+mock_busio.I2C = MagicMock()
+
+mock_ds1307_mod = MagicMock()
+mock_ds1307_inst = MagicMock()
+import time
+mock_ds1307_inst.datetime = time.struct_time((2026, 9, 26, 14, 30, 0, 5, 269, -1))
+mock_ds1307_mod.DS1307 = MagicMock(return_value=mock_ds1307_inst)
+
 # Asignar a sys.modules
 MOCKS = {
     'board': mock_board,
     'digitalio': mock_digitalio,
     'touchio': mock_touchio,
+    'analogio': mock_analogio,
+    'busio': mock_busio,
+    'adafruit_ds1307': mock_ds1307_mod,
     'supervisor': mock_supervisor,
     'displayio': mock_displayio,
     'terminalio': mock_terminalio,
@@ -163,6 +193,8 @@ class TestCircuitPythonLib(unittest.TestCase):
         import utils.time_updates as tu
         import utils.screen as screen
         import utils.mqtt_client as mqtt_cli
+        import utils.buttons as buttons_mod
+        import utils.temp_sensor as temp_mod
 
         cls.config = config
         cls.file_system = file_system
@@ -175,6 +207,8 @@ class TestCircuitPythonLib(unittest.TestCase):
         cls.tu = tu
         cls.screen = screen
         cls.mqtt_cli = mqtt_cli
+        cls.buttons_mod = buttons_mod
+        cls.temp_mod = temp_mod
 
     @classmethod
     def tearDownClass(cls):
@@ -347,6 +381,77 @@ class TestCircuitPythonLib(unittest.TestCase):
         client = self.mqtt_cli.MQTTClient()
         self.assertFalse(client.connected)
         self.assertIsNone(client.mqtt_client)
+
+    def test_11_pin_resolver_and_pcb_config(self):
+        """Verificar resolución agnóstica de pines (A1/A2 vs IO4/GPIO4) para PCB_MARCADOR_LISA"""
+        # Prueba directa y por variantes de prefijo
+        self.assertEqual(self.config.get_board_pin("IO4"), "PIN_IO4")
+        self.assertEqual(self.config.get_board_pin("GPIO4"), "PIN_GPIO4")
+        self.assertEqual(self.config.get_board_pin("A1"), "PIN_A1")
+        self.assertEqual(self.config.get_board_pin("A2"), "PIN_A2")
+        self.assertEqual(self.config.get_board_pin("IO15"), "PIN_IO15")
+        self.assertEqual(self.config.get_board_pin("IO8"), "PIN_IO8")
+        self.assertEqual(self.config.get_board_pin("IO9"), "PIN_IO9")
+        self.assertIsNone(self.config.get_board_pin("PIN_INEXISTENTE_XYZ"))
+        self.assertIsNone(self.config.get_board_pin(""))
+
+    def test_12_button_controller(self):
+        """Verificar controlador de pulsadores físicos U6, U7, U8 de la PCB"""
+        btn_ctrl = self.buttons_mod.ButtonController()
+        self.assertIsNotNone(btn_ctrl.btn1)
+        self.assertIsNotNone(btn_ctrl.btn2)
+        self.assertIsNotNone(btn_ctrl.btn3)
+
+        # Reposo (sin presionar)
+        btn_ctrl.btn1.value = False
+        btn_ctrl.btn2.value = False
+        btn_ctrl.btn3.value = False
+        _current_ticks[0] = 1000
+        self.assertEqual(btn_ctrl.read_buttons(), (False, False, False))
+
+        # Presión en botón 1 (U6 - Llegada)
+        btn_ctrl.btn1.value = True
+        _current_ticks[0] = 1500
+        self.assertEqual(btn_ctrl.read_buttons(), (True, False, False), "Debe detectar flanco en botón U6")
+
+        # Mantener presionado (no debe volver a disparar)
+        _current_ticks[0] = 1550
+        self.assertEqual(btn_ctrl.read_buttons(), (False, False, False), "No debe re-disparar mientras siga presionado")
+
+        # Soltar y presionar botón 2 (U7 - Cronómetro) tras expirar debounce
+        btn_ctrl.btn1.value = False
+        btn_ctrl.btn2.value = True
+        _current_ticks[0] = 2000
+        self.assertEqual(btn_ctrl.read_buttons(), (False, True, False), "Debe detectar flanco en botón U7")
+
+        # Soltar y presionar botón 3 (U8 - Pantalla)
+        btn_ctrl.btn2.value = False
+        btn_ctrl.btn3.value = True
+        _current_ticks[0] = 2500
+        self.assertEqual(btn_ctrl.read_buttons(), (False, False, True), "Debe detectar flanco en botón U8")
+
+    def test_13_lm35_temperature_sensor(self):
+        """Verificar lectura y conversión analógica de temperatura LM35 en GPIO05"""
+        sensor = self.temp_mod.TemperatureSensor()
+        self.assertIsNotNone(sensor.device)
+        temp_c = sensor.read_temperature()
+        self.assertGreaterEqual(temp_c, 20.0)
+        self.assertLessEqual(temp_c, 35.0)
+        self.assertEqual(sensor.get_temperature_int(), 28)
+
+    def test_14_hardware_rtc_ds1307(self):
+        """Verificar inicialización y sincronización de RTC DS1307 en bus I2C"""
+        ds = self.rtc.init_hardware_rtc()
+        self.assertIsNotNone(ds)
+        # La hora mockeada era 14:30:00 -> 2 PM en formato 12h
+        self.assertEqual(self.rtc.get_hours(), 2)
+        self.assertEqual(self.rtc.get_minutes(), 30)
+        self.assertEqual(self.rtc.get_ampm(), "PM")
+        # Forzar sincronización desde MQTT
+        self.rtc.init_timer(9, 45, 15)
+        self.assertEqual(self.rtc.get_hours(), 9)
+        self.assertEqual(self.rtc.get_minutes(), 45)
+        self.assertEqual(self.rtc.get_ampm(), "AM")
 
 if __name__ == "__main__":
     print("\n========================================================")

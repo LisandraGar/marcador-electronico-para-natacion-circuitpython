@@ -12,7 +12,7 @@ class ArrivalTouchSensor:
         self.cooldown_ms = 1500  # Tiempo mínimo entre paradas para evitar rebotes de agua
 
         try:
-            pin_obj = getattr(board, self.pin_name, None)
+            pin_obj = config.get_board_pin(self.pin_name) if hasattr(config, 'get_board_pin') else getattr(board, self.pin_name, None)
             if pin_obj is None:
                 print(f"⚠️ Pin de sensor táctil '{self.pin_name}' no existe en este board")
                 return
