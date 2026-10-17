@@ -18,10 +18,20 @@ def get_display_content(bandera, time_data, chrono, records, mqtt):
     temp = get_temp()
 
     if get_screentype() == 'chrono':
+        c1 = chrono.get("c1", chrono)
+        c2 = chrono.get("c2", None)
+
+        if c2:
+            return [
+                f"   {h:02d}:{m:02d} {ampm} - {temp}°C   ",
+                f"1|#{c1.get('id', '1')} {c1.get('hh', 0):02d}:{c1.get('mm', 0):02d}:{c1.get('ss', 0):02d}.{c1.get('ms', 0):02d}",
+                f"2|#{c2.get('id', '2')} {c2.get('hh', 0):02d}:{c2.get('mm', 0):02d}:{c2.get('ss', 0):02d}.{c2.get('ms', 0):02d}"
+            ]
+
         return [
             f"    {h:02d}:{m:02d} {ampm} - {temp}°    ",
             "  Round|HH|MM|SS|MS",
-            f"    {chrono['id']}  |{chrono['hh']:02d}|{chrono['mm']:02d}|{chrono['ss']:02d}|{chrono['ms']:02d}"
+            f"    {chrono.get('id', 0)}  |{chrono.get('hh', 0):02d}|{chrono.get('mm', 0):02d}|{chrono.get('ss', 0):02d}|{chrono.get('ms', 0):02d}"
         ]
 
     num_rec = len(records)

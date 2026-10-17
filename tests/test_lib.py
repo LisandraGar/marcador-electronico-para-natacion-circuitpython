@@ -495,6 +495,51 @@ class TestCircuitPythonLib(unittest.TestCase):
         _current_ticks[0] = 3000
         self.assertTrue(sensor_io11.check_arrival(), "Debe registrar llegada en Carril 3 (IO11)")
 
+    def test_16_dual_simultaneous_chrono(self):
+        """Verificar soporte de 2 nadadores en simultáneo (carril 1 y carril 2), comandos MQTT y display"""
+        mock_mqtt = MagicMock()
+        self.chrono.clr_chrono()
+
+        # 1. Iniciar ambos cronómetros en simultáneo con start_all:1,2 por MQTT
+        _current_ticks[0] = 10000
+        self.tm.topic_manager("esp32s3/chrono", "start_all:1,2", mock_mqtt)
+        self.assertEqual(self.chrono.get_chrono_status(), "started")
+
+        # 2. Simular avance de 35,500 ms
+        _current_ticks[0] = 45500
+        data = self.chrono.get_chrono_formatted()
+        self.assertTrue(data.get("both_running"))
+        self.assertEqual(data.get("active_count"), 2)
+        self.assertIsNotNone(data.get("c1"))
+        self.assertIsNotNone(data.get("c2"))
+        self.assertEqual(data["c1"]["id"], "1")
+        self.assertEqual(data["c2"]["id"], "2")
+        self.assertEqual(data["c1"]["ss"], 35)
+        self.assertEqual(data["c1"]["ms"], 50)
+
+        # 3. Parada individual del carril 1 (nadador 1 toca placa de llegada)
+        self.tm.topic_manager("esp32s3/chrono", "pause_chrono:1", mock_mqtt)
+        # El cronómetro global debe seguir 'started' porque el nadador 2 sigue nadando
+        self.assertEqual(self.chrono.get_chrono_status(), "started")
+        data_after_p1 = self.chrono.get_chrono_formatted()
+        self.assertEqual(data_after_p1["c1"]["status"], "stoped")
+        self.assertEqual(data_after_p1["c2"]["status"], "started")
+
+        # 4. Verificar renderizado en matriz LED dual
+        time_data = {"hours": 11, "minutes": 20, "seconds": 0, "ampm": "AM"}
+        self.tm.set_screentype_topic("chrono")
+        lines = self.dc.get_display_content(True, time_data, data_after_p1, [], mock_mqtt)
+        self.assertEqual(len(lines), 3)
+        self.assertIn("1|#1", lines[1])
+        self.assertIn("2|#2", lines[2])
+
+        # 5. Parada global / parada carril 2
+        self.tm.topic_manager("esp32s3/chrono", "stop_all", mock_mqtt)
+        self.assertEqual(self.chrono.get_chrono_status(), "stoped")
+        data_stopped = self.chrono.get_chrono_formatted()
+        self.assertEqual(data_stopped["c1"]["status"], "stoped")
+        self.assertEqual(data_stopped["c2"]["status"], "stoped")
+
 if __name__ == "__main__":
     print("\n========================================================")
     print("🏊 EJECUTANDO PRUEBAS DE INTEGRIDAD EN CIRCUITPYTHON/LIB")

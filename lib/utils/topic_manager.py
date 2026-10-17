@@ -2,7 +2,14 @@ import json
 import utils.config as config
 from utils.file_system import guarda_valor, lee_valor
 from utils.rtc import init_timer, get_hours, get_minutes, get_seconds, get_ampm
-from utils.chrono import start_chrono, stop_chrono, clr_chrono, get_chrono_formatted
+from utils.chrono import (
+    start_chrono,
+    stop_chrono,
+    start_all_chrono,
+    stop_all_chrono,
+    clr_chrono,
+    get_chrono_formatted
+)
 from utils.buzzer import buzzer
 
 
@@ -73,10 +80,11 @@ def record_chrono_stop(id_num, mqtt=None):
     Detiene el cronómetro para el nadador, formatea su tiempo,
     actualiza la lista de records en almacenamiento y la publica por MQTT.
     """
-    stop_chrono(id_num)
+    stopped_single = stop_chrono(id_num)
     
-    time_res = get_chrono_formatted()
-    json_txt = json.dumps(time_res)
+    full_chrono = get_chrono_formatted()
+    single_json_txt = json.dumps(stopped_single)
+    full_chrono_txt = json.dumps(full_chrono)
     
     try:
         scores_raw = lee_valor('data.txt', 'scores')
@@ -89,7 +97,7 @@ def record_chrono_stop(id_num, mqtt=None):
         try:
             curr_score = json.loads(score) if isinstance(score, str) else score
             if str(curr_score.get('id')) == str(id_num):
-                scores[i] = json_txt
+                scores[i] = single_json_txt
                 exist = True
             else:
                 scores[i] = score if isinstance(score, str) else json.dumps(score)
@@ -97,26 +105,69 @@ def record_chrono_stop(id_num, mqtt=None):
             scores[i] = score
     
     if not exist:
-        scores.append(json_txt)
+        scores.append(single_json_txt)
     
     scores_txt = json.dumps(scores)
     if mqtt:
         mqtt.publish(config.TOPIC_SENDSCORES, scores_txt)
-        mqtt.publish(config.TOPIC_SENDCHRONO, json_txt)
+        mqtt.publish(config.TOPIC_SENDCHRONO, full_chrono_txt)
     guarda_valor('data.txt', 'scores', scores_txt)
-    return time_res
+    return stopped_single
 
 def chrono_topic(msg, mqtt):
-    msg_pair = msg.split(':')
+    msg_pair = msg.split(':', 1)
     command = msg_pair[0]
-    swimmer_id = msg_pair[1] if len(msg_pair) > 1 else '0'
+    payload = msg_pair[1] if len(msg_pair) > 1 else ''
     
     if command == 'play_chrono':
-        start_chrono(swimmer_id)
+        slot_target = None
+        target_id = payload
+        if ',' in payload:
+            parts = payload.split(',')
+            target_id = parts[0].strip()
+            if len(parts) > 1 and parts[1].strip() in ('1', '2'):
+                slot_target = int(parts[1].strip())
+        elif ':' in payload:
+            parts = payload.split(':')
+            target_id = parts[0].strip()
+            if len(parts) > 1 and parts[1].strip() in ('1', '2'):
+                slot_target = int(parts[1].strip())
+        start_chrono(target_id or '1', slot_num=slot_target)
         buzzer.sound_start()
+        if mqtt:
+            mqtt.publish(config.TOPIC_SENDCHRONO, json.dumps(get_chrono_formatted()))
     elif command == 'pause_chrono':
-        record_chrono_stop(swimmer_id, mqtt)
+        target_id = payload
+        if ',' in payload:
+            parts = payload.split(',')
+            target_id = parts[0].strip()
+        elif ':' in payload:
+            parts = payload.split(':')
+            target_id = parts[0].strip()
+        record_chrono_stop(target_id or '1', mqtt)
         buzzer.beep(0.2)
+    elif command in ('play_all', 'start_all'):
+        # Inicio global simultáneo de dos nadadores (Salida general)
+        parts = payload.split(',') if payload else ['1', '2']
+        id1 = parts[0].strip() if len(parts) > 0 and parts[0].strip() else '1'
+        id2 = parts[1].strip() if len(parts) > 1 and parts[1].strip() else '2'
+        start_all_chrono(id1, id2)
+        buzzer.sound_start()
+        if mqtt:
+            mqtt.publish(config.TOPIC_SENDCHRONO, json.dumps(get_chrono_formatted()))
+    elif command in ('pause_all', 'stop_all'):
+        # Parada global de ambos nadadores
+        c = get_chrono_formatted()
+        c1 = c.get('c1', {})
+        c2 = c.get('c2', {})
+        if c1.get('status') == 'started':
+            record_chrono_stop(c1.get('id', '1'), mqtt)
+        if c2.get('status') == 'started':
+            record_chrono_stop(c2.get('id', '2'), mqtt)
+        stop_all_chrono()
+        buzzer.beep(0.25)
+        if mqtt:
+            mqtt.publish(config.TOPIC_SENDCHRONO, json.dumps(get_chrono_formatted()))
 
 
 def get_scores_topic(msg, mqtt):
