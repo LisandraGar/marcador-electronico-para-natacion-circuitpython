@@ -9,13 +9,26 @@ import terminalio
 from utils.mqtt_client import MQTTClient
 from utils.screen import show_text, show_multiline
 from utils.rtc import init_timer, get_hours, get_minutes, get_seconds, get_ampm, get_milliseconds
-from utils.topic_manager import get_temp, get_color, get_scores, get_screentype, record_chrono_stop
+from utils.topic_manager import (
+    get_temp,
+    get_color,
+    get_scores,
+    get_screentype,
+    set_screentype_topic,
+    record_chrono_stop
+)
 from utils.file_system import lee_valor
-from utils.config import TOPIC_SENDTIME, TOPIC_SENDCHRONO
-from utils.chrono import get_chrono_formatted, get_chrono_status
+from utils.config import TOPIC_SENDTIME, TOPIC_SENDCHRONO, TOPIC_SCREENTYPE
+from utils.chrono import (
+    start_chrono,
+    start_all_chrono,
+    stop_all_chrono,
+    get_chrono_formatted,
+    get_chrono_status
+)
 from utils.time_updates import handle_time_updates
 from utils.display_content import get_display_content
-from utils.touch_sensor import arrival_sensor, touch_sensors
+from utils.touch_sensor import arrival_sensor, touch_sensor_2, touch_sensor_3, touch_sensors
 from utils.buzzer import buzzer
 from utils.buttons import buttons
 
@@ -38,56 +51,36 @@ def main():
         try:
             mqtt_client.loop()
 
-            # Comprobar sensores/botones capacitivos de llegada (Sensor 1 -> Carril 1, Sensor 2 -> Carril 2)
-            for idx, sensor in enumerate(touch_sensors, start=1):
-                if sensor.check_arrival():
-                    if get_chrono_status() == 'started':
-                        chrono_now = get_chrono_formatted()
-                        target_id = None
-                        if idx == 1 and chrono_now.get("c1", {}).get("status") == "started":
-                            target_id = chrono_now["c1"]["id"]
-                        elif idx == 2 and chrono_now.get("c2", {}).get("status") == "started":
-                            target_id = chrono_now["c2"]["id"]
-                        else:
-                            target_id = chrono_now.get("id", str(idx))
-
-                        print(f"🏊 ¡LLEGADA DETECTADA POR {sensor.label}! Nadador #{target_id}")
-                        buzzer.sound_arrival()
-                        record_chrono_stop(target_id, mqtt_client)
-                    else:
-                        buzzer.beep(0.08)
-
-            # Comprobar los 3 pulsadores físicos de la PCB (U6 = Carril 1, U7 = Carril 2, U8 = Control Global)
+            # Lectura de los 4 botones físicos del sistema:
+            # 1. Cambiar visualización (U8 / IO17 o sensor auxiliar IO11)
+            # 2. Inicio y pausa global (U7 / IO16)
+            # 3. Inicio y pausa 1 - Carril 1 (U6 / IO15)
+            # 4. Inicio y pausa 2 - Carril 2 (IO10)
             b1_press, b2_press, b3_press = buttons.read_buttons()
+            s1_press = arrival_sensor.check_arrival()
+            s2_press = touch_sensor_2.check_arrival()
+            s3_press = touch_sensor_3.check_arrival()
+
+            btn_view = b3_press or s3_press
+            btn_global = b2_press
+            btn_lane1 = b1_press or s1_press
+            btn_lane2 = s2_press
+
             chrono_now = get_chrono_formatted()
 
-            if b1_press:
-                # Pulsador 1 (U6): Parada individual Carril 1
-                c1_data = chrono_now.get("c1", {})
-                if c1_data.get("status") == "started":
-                    active_id = c1_data.get("id", "1")
-                    print(f"🏊 ¡LLEGADA CARRIL 1 (BOTÓN U6)! Nadador #{active_id}")
-                    buzzer.sound_arrival()
-                    record_chrono_stop(active_id, mqtt_client)
-                else:
-                    buzzer.beep(0.08)
+            # BOTÓN 1: Cambiar visualización ('show' Récords <-> 'chrono' Cronómetros)
+            if btn_view:
+                curr_type = get_screentype()
+                next_type = "show" if curr_type == "chrono" else "chrono"
+                print(f"🖥️ Cambio de visualización a modo: {next_type}")
+                set_screentype_topic(next_type)
+                buzzer.beep(0.08)
+                mqtt_client.publish(TOPIC_SCREENTYPE, next_type)
 
-            if b2_press:
-                # Pulsador 2 (U7): Parada individual Carril 2
-                c2_data = chrono_now.get("c2", {})
-                if c2_data.get("status") == "started":
-                    active_id = c2_data.get("id", "2")
-                    print(f"🏊 ¡LLEGADA CARRIL 2 (BOTÓN U7)! Nadador #{active_id}")
-                    buzzer.sound_arrival()
-                    record_chrono_stop(active_id, mqtt_client)
-                else:
-                    buzzer.beep(0.08)
-
-            if b3_press:
-                # Pulsador 3 (U8): Control Global (Salida General / Parada General)
-                from utils.chrono import start_all_chrono, stop_all_chrono
+            # BOTÓN 2: Inicio y Pausa Global (Ambos cronómetros simultáneamente)
+            if btn_global:
                 if get_chrono_status() == "started":
-                    print("🛑 ¡PARADA GLOBAL POR BOTÓN U8!")
+                    print("🛑 ¡PARADA GLOBAL!")
                     c1_data = chrono_now.get("c1", {})
                     c2_data = chrono_now.get("c2", {})
                     if c1_data.get("status") == "started":
@@ -96,11 +89,49 @@ def main():
                         record_chrono_stop(c2_data.get("id", "2"), mqtt_client)
                     stop_all_chrono()
                     buzzer.sound_arrival()
+                    mqtt_client.publish(TOPIC_SENDCHRONO, json.dumps(get_chrono_formatted()))
                 else:
-                    print("🚀 ¡SALIDA GLOBAL POR BOTÓN U8!")
+                    print("🚀 ¡INICIO GLOBAL SIMULTÁNEO!")
                     id1 = chrono_now.get("c1", {}).get("id", "1")
                     id2 = chrono_now.get("c2", {}).get("id", "2")
                     start_all_chrono(id1, id2)
+                    if get_screentype() != "chrono":
+                        set_screentype_topic("chrono")
+                        mqtt_client.publish(TOPIC_SCREENTYPE, "chrono")
+                    buzzer.sound_start()
+                    mqtt_client.publish(TOPIC_SENDCHRONO, json.dumps(get_chrono_formatted()))
+
+            # BOTÓN 3: Inicio y Pausa 1 (Carril 1)
+            if btn_lane1:
+                c1_data = chrono_now.get("c1", {})
+                active_id = c1_data.get("id", "1")
+                if c1_data.get("status") == "started":
+                    print(f"🏊 ¡PAUSA / LLEGADA CARRIL 1! Nadador #{active_id}")
+                    buzzer.sound_arrival()
+                    record_chrono_stop(active_id, mqtt_client)
+                else:
+                    print(f"▶️ ¡INICIO CARRIL 1! Nadador #{active_id}")
+                    start_chrono(active_id, slot_num=1)
+                    if get_screentype() != "chrono":
+                        set_screentype_topic("chrono")
+                        mqtt_client.publish(TOPIC_SCREENTYPE, "chrono")
+                    buzzer.sound_start()
+                    mqtt_client.publish(TOPIC_SENDCHRONO, json.dumps(get_chrono_formatted()))
+
+            # BOTÓN 4: Inicio y Pausa 2 (Carril 2)
+            if btn_lane2:
+                c2_data = chrono_now.get("c2", {})
+                active_id = c2_data.get("id", "2")
+                if c2_data.get("status") == "started":
+                    print(f"🏊 ¡PAUSA / LLEGADA CARRIL 2! Nadador #{active_id}")
+                    buzzer.sound_arrival()
+                    record_chrono_stop(active_id, mqtt_client)
+                else:
+                    print(f"▶️ ¡INICIO CARRIL 2! Nadador #{active_id}")
+                    start_chrono(active_id, slot_num=2)
+                    if get_screentype() != "chrono":
+                        set_screentype_topic("chrono")
+                        mqtt_client.publish(TOPIC_SCREENTYPE, "chrono")
                     buzzer.sound_start()
                     mqtt_client.publish(TOPIC_SENDCHRONO, json.dumps(get_chrono_formatted()))
 

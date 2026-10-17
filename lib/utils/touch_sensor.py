@@ -3,17 +3,20 @@ import supervisor
 import utils.config as config
 
 class ArrivalTouchSensor:
-    def __init__(self, pin_name=None, mode=None, label="Sensor 1"):
+    def __init__(self, pin_name=None, mode=None, label="Sensor 1", cooldown_ms=1500):
         self.device = None
         self.label = label
         self.mode = (mode or getattr(config, 'touch_mode', 'digital')).lower()
         self.pin_name = pin_name or getattr(config, 'touch_pin_name', 'IO15')
         self._last_state = False
         self._last_trigger_ms = 0
-        self.cooldown_ms = 1500  # Tiempo mínimo entre paradas para evitar rebotes de agua
+        self.cooldown_ms = cooldown_ms  # Tiempo mínimo entre pulsaciones/paradas
 
         try:
             pin_obj = config.get_board_pin(self.pin_name) if hasattr(config, 'get_board_pin') else getattr(board, self.pin_name, None)
+            if pin_obj is None and self.pin_name == 'A1':
+                self.pin_name = 'IO15'
+                pin_obj = config.get_board_pin(self.pin_name) if hasattr(config, 'get_board_pin') else getattr(board, self.pin_name, None)
             if pin_obj is None:
                 print(f"⚠️ Pin de sensor táctil '{self.pin_name}' no existe en este board ({self.label})")
                 return
@@ -70,24 +73,27 @@ class ArrivalTouchSensor:
         self._last_state = current_state
         return triggered
 
-# Instancias para los 3 sensores/botones capacitivos
+# Instancias para los sensores/botones físicos adicionales
 arrival_sensor = ArrivalTouchSensor(
     pin_name=getattr(config, 'touch_pin_name', 'IO15'),
     mode=getattr(config, 'touch_mode', 'digital'),
-    label="Sensor 1 (IO15)"
+    label="Botón 3: Inicio/Pausa 1 (IO15)",
+    cooldown_ms=350
 )
 touch_sensor_1 = arrival_sensor  # Alias de compatibilidad
 
 touch_sensor_2 = ArrivalTouchSensor(
     pin_name=getattr(config, 'touch_pin_2_name', 'IO10'),
     mode=getattr(config, 'touch_mode_2', getattr(config, 'touch_mode', 'digital')),
-    label="Sensor 2 (IO10)"
+    label="Botón 4: Inicio/Pausa 2 (IO10)",
+    cooldown_ms=350
 )
 
 touch_sensor_3 = ArrivalTouchSensor(
     pin_name=getattr(config, 'touch_pin_3_name', 'IO11'),
     mode=getattr(config, 'touch_mode_3', getattr(config, 'touch_mode', 'digital')),
-    label="Sensor 3 (IO11)"
+    label="Sensor Auxiliar (IO11)",
+    cooldown_ms=350
 )
 
 touch_sensors = [arrival_sensor, touch_sensor_2, touch_sensor_3]

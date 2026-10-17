@@ -69,8 +69,10 @@ def get_users_topic(msg, mqtt):
     json_txt = json.dumps(response)
     mqtt.publish(config.TOPIC_USERDATA, json_txt)
     
-    # Además enviamos el color de pantalla
+    # Además enviamos el color de pantalla y modo de visualización actual
     mqtt.publish(config.TOPIC_SENDCOLOR, get_color())
+    mqtt.publish(config.TOPIC_SCREENTYPE, get_screentype())
+    mqtt.publish(config.TOPIC_SENDCHRONO, json.dumps(get_chrono_formatted()))
     
     # Además enviamos la hora y temperatura
     send_timetemp(mqtt)

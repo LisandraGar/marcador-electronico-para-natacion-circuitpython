@@ -15,6 +15,9 @@ class BuzzerController:
 
         try:
             pin_obj = config.get_board_pin(pin_name) if hasattr(config, 'get_board_pin') else getattr(board, pin_name, None)
+            if pin_obj is None and pin_name == 'A2':
+                pin_name = 'IO4'
+                pin_obj = config.get_board_pin(pin_name) if hasattr(config, 'get_board_pin') else getattr(board, pin_name, None)
             if pin_obj is not None:
                 self.device = digitalio.DigitalInOut(pin_obj)
                 self.device.direction = digitalio.Direction.OUTPUT
