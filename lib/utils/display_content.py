@@ -17,19 +17,23 @@ def get_display_content(bandera, time_data, chrono, records, mqtt):
     h, m, s, ampm = time_data["hours"], time_data["minutes"], time_data["seconds"], time_data["ampm"]
     temp = get_temp()
 
+    # Indicador de conectividad: [ON] si MQTT está en línea, [L] si está en modo Local/autónomo
+    is_online = bool(mqtt and getattr(mqtt, 'connected', False))
+    net_badge = "[ON]" if is_online else "[L]"
+
     if get_screentype() == 'chrono':
         c1 = chrono.get("c1", chrono)
         c2 = chrono.get("c2", None)
 
         if c2:
             return [
-                f"   {h:02d}:{m:02d} {ampm} - {temp}°C   ",
+                f" {h:02d}:{m:02d} {ampm} {temp}°C {net_badge}",
                 f"1|#{c1.get('id', '1')} {c1.get('hh', 0):02d}:{c1.get('mm', 0):02d}:{c1.get('ss', 0):02d}.{c1.get('ms', 0):02d}",
                 f"2|#{c2.get('id', '2')} {c2.get('hh', 0):02d}:{c2.get('mm', 0):02d}:{c2.get('ss', 0):02d}.{c2.get('ms', 0):02d}"
             ]
 
         return [
-            f"    {h:02d}:{m:02d} {ampm} - {temp}°    ",
+            f" {h:02d}:{m:02d} {ampm} {temp}°C {net_badge}",
             "  Round|HH|MM|SS|MS",
             f"    {chrono.get('id', 0)}  |{chrono.get('hh', 0):02d}|{chrono.get('mm', 0):02d}|{chrono.get('ss', 0):02d}|{chrono.get('ms', 0):02d}"
         ]
@@ -52,7 +56,7 @@ def get_display_content(bandera, time_data, chrono, records, mqtt):
         mqtt.publish(TOPIC_SENDVIEW, json.dumps(r))
         
     return [
-        f"{h:02d}:{m:02d} {ampm}      HEAT {temp}",
+        f"{h:02d}:{m:02d} {ampm}  HEAT {temp} {net_badge}",
         format_record("RECORDS", r[0]) if r[0] else "RECORDS",
         format_record("       ", r[1]) if r[1] else ""
     ]
