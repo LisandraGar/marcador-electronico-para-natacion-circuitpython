@@ -97,12 +97,15 @@ class MQTTClient:
             self.publish(config.TOPIC_WILL, "online", retain=True)
             return True
         except MMQTTException as e:
-            print(f"❌ Error MQTT: {e}")
+            detail = f" -> {e.args[1]}" if len(e.args) > 1 and e.args[1] is not None else ""
+            print(f"❌ Error MQTT: {e.args[0] if e.args else e}{detail}")
             self.connected = False
+            self.setup_mqtt()
             return False
         except Exception as e:
-            print(f"❌ Error general: {e}")
+            print(f"❌ Error general de conexión: {e}")
             self.connected = False
+            self.setup_mqtt()
             return False
             
     def publish(self, topic, message, retain=False):

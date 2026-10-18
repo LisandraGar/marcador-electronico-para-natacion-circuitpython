@@ -530,8 +530,8 @@ class TestCircuitPythonLib(unittest.TestCase):
         self.tm.set_screentype_topic("chrono")
         lines = self.dc.get_display_content(True, time_data, data_after_p1, [], mock_mqtt)
         self.assertEqual(len(lines), 3)
-        self.assertIn("1|#1", lines[1])
-        self.assertIn("2|#2", lines[2])
+        self.assertIn("C1:", lines[1])
+        self.assertIn("C2:", lines[2])
 
         # 5. Parada global / parada carril 2
         self.tm.topic_manager("esp32s3/chrono", "stop_all", mock_mqtt)

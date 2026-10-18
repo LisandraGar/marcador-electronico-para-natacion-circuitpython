@@ -28,8 +28,8 @@ def get_display_content(bandera, time_data, chrono, records, mqtt):
         if c2:
             return [
                 f" {h:02d}:{m:02d} {ampm} {temp}°C {net_badge}",
-                f"1|#{c1.get('id', '1')} {c1.get('hh', 0):02d}:{c1.get('mm', 0):02d}:{c1.get('ss', 0):02d}.{c1.get('ms', 0):02d}",
-                f"2|#{c2.get('id', '2')} {c2.get('hh', 0):02d}:{c2.get('mm', 0):02d}:{c2.get('ss', 0):02d}.{c2.get('ms', 0):02d}"
+                f"C1: {c1.get('hh', 0):02d}:{c1.get('mm', 0):02d}:{c1.get('ss', 0):02d}.{c1.get('ms', 0):02d}",
+                f"C2: {c2.get('hh', 0):02d}:{c2.get('mm', 0):02d}:{c2.get('ss', 0):02d}.{c2.get('ms', 0):02d}"
             ]
 
         return [
