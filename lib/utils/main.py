@@ -36,9 +36,23 @@ from utils.buttons import buttons
 mqtt_client = MQTTClient()
 
 def main():
-    mqtt_client.connect_wifi()
-    mqtt_client.setup_mqtt()
-    mqtt_client.connect_mqtt()
+    # Mensaje inicial inmediato para confirmar encendido de matriz y procesador
+    try:
+        show_multiline(["  MARCADOR NATACION  ", "CONECTANDO WIFI...   "], x=0, y=2, color=0x00FF88)
+    except Exception:
+        pass
+
+    try:
+        mqtt_client.connect_wifi()
+        mqtt_client.setup_mqtt()
+        mqtt_client.connect_mqtt()
+    except Exception as e:
+        print(f"⚠️ Conexión inicial demorada/fallida: {e}")
+        try:
+            show_multiline(["ERROR RED / MQTT", "INICIANDO LOCAL..."], x=0, y=2, color=0xFF5500)
+            time.sleep(1.0)
+        except Exception:
+            pass
     
     print("🚀 Iniciando loop principal...")
     
