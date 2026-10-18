@@ -18,6 +18,12 @@ class MQTTClient:
         wifi.radio.connect(config.ssid, config.password)
         print(f"✅ Conectado a {config.ssid}!")
         print(f"IP: {wifi.radio.ipv4_address}")
+        try:
+            pool = socketpool.SocketPool(wifi.radio)
+            resolved = pool.getaddrinfo(config.mqtt_broker, config.mqtt_port)[0][4][0]
+            print(f"🌐 Internet/DNS OK: Broker resuelto a {resolved}")
+        except Exception as dns_err:
+            print(f"⚠️ Alerta DNS: No se pudo resolver {config.mqtt_broker} ({dns_err}). ¿El router tiene Internet?")
     
     def setup_mqtt(self):
         """Configurar cliente MQTT"""
@@ -97,15 +103,14 @@ class MQTTClient:
             self.publish(config.TOPIC_WILL, "online", retain=True)
             return True
         except MMQTTException as e:
-            detail = f" -> {e.args[1]}" if len(e.args) > 1 and e.args[1] is not None else ""
+            cause = getattr(e, "__cause__", None) or getattr(e, "__context__", None)
+            detail = f" (Causa: {type(cause).__name__}: {cause})" if cause else ""
             print(f"❌ Error MQTT: {e.args[0] if e.args else e}{detail}")
             self.connected = False
-            self.setup_mqtt()
             return False
         except Exception as e:
             print(f"❌ Error general de conexión: {e}")
             self.connected = False
-            self.setup_mqtt()
             return False
             
     def publish(self, topic, message, retain=False):

@@ -144,9 +144,9 @@ def main():
             if mqtt_client.connected:
                 mqtt_client.loop()
             else:
-                # Intento de reconexión periódico y no bloqueante cada 15 segundos
+                # Intento de reconexión periódico y no bloqueante cada 30 segundos
                 now_ms = supervisor.ticks_ms()
-                if (now_ms - last_reconnect_attempt) & 0x1FFFFFFF > 15000:
+                if (now_ms - last_reconnect_attempt) & 0x1FFFFFFF > 30000:
                     last_reconnect_attempt = now_ms
                     print("🔄 Intentando reconectar a MQTT en segundo plano...")
                     try:
