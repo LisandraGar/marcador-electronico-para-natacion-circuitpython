@@ -540,6 +540,31 @@ class TestCircuitPythonLib(unittest.TestCase):
         self.assertEqual(data_stopped["c1"]["status"], "stoped")
         self.assertEqual(data_stopped["c2"]["status"], "stoped")
 
+    def test_17_atomic_global_stop_timing(self):
+        """Verificar que la parada global (record_all_chrono_stop) detiene ambos nadadores con tiempos idénticos"""
+        mock_mqtt = MagicMock()
+        self.chrono.clr_chrono()
+
+        # Iniciar simultáneamente en tick 1000
+        _current_ticks[0] = 1000
+        self.chrono.start_all_chrono("1", "2")
+        self.assertEqual(self.chrono.get_chrono_status(), "started")
+
+        # Avanzar 4520 ms
+        _current_ticks[0] = 5520
+        f1, f2 = self.tm.record_all_chrono_stop(mock_mqtt)
+
+        # Ambos deben reportar exactamente los mismos segundos y milisegundos
+        self.assertEqual(f1["ss"], f2["ss"], "Los segundos de ambos nadadores deben ser idénticos")
+        self.assertEqual(f1["ms"], f2["ms"], "Las centésimas de ambos nadadores deben ser idénticas")
+        self.assertEqual(f1["status"], "stoped")
+        self.assertEqual(f2["status"], "stoped")
+
+        # Verificar que el cronómetro global reporta ambos detenidos
+        formatted = self.chrono.get_chrono_formatted()
+        self.assertEqual(formatted["c1"]["ms"], formatted["c2"]["ms"])
+        self.assertFalse(formatted["both_running"])
+
 if __name__ == "__main__":
     print("\n========================================================")
     print("🏊 EJECUTANDO PRUEBAS DE INTEGRIDAD EN CIRCUITPYTHON/LIB")

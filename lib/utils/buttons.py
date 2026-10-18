@@ -20,7 +20,9 @@ class ButtonController:
         self._last_b1 = False
         self._last_b2 = False
         self._last_b3 = False
-        self._last_press_ms = 0
+        self._last_b1_ms = 0
+        self._last_b2_ms = 0
+        self._last_b3_ms = 0
         self.debounce_ms = 200
 
     def _init_pin(self, pin_name):
@@ -41,26 +43,36 @@ class ButtonController:
     def read_buttons(self):
         """
         Retorna una tupla (b1_pressed, b2_pressed, b3_pressed)
-        con detección de flancos de subida y filtro anti-rebote.
+        con detección independiente de flancos de subida y filtro anti-rebote por botón.
         """
         now = supervisor.ticks_ms()
-        if (now - self._last_press_ms) & 0x1FFFFFFF < self.debounce_ms:
-            return (False, False, False)
 
         v1 = bool(self.btn1.value) if self.btn1 else False
         v2 = bool(self.btn2.value) if self.btn2 else False
         v3 = bool(self.btn3.value) if self.btn3 else False
 
-        p1 = v1 and not self._last_b1
-        p2 = v2 and not self._last_b2
-        p3 = v3 and not self._last_b3
+        p1 = False
+        p2 = False
+        p3 = False
+
+        if v1 and not self._last_b1:
+            if (now - self._last_b1_ms) & 0x1FFFFFFF >= self.debounce_ms:
+                p1 = True
+                self._last_b1_ms = now
+
+        if v2 and not self._last_b2:
+            if (now - self._last_b2_ms) & 0x1FFFFFFF >= self.debounce_ms:
+                p2 = True
+                self._last_b2_ms = now
+
+        if v3 and not self._last_b3:
+            if (now - self._last_b3_ms) & 0x1FFFFFFF >= self.debounce_ms:
+                p3 = True
+                self._last_b3_ms = now
 
         self._last_b1 = v1
         self._last_b2 = v2
         self._last_b3 = v3
-
-        if p1 or p2 or p3:
-            self._last_press_ms = now
 
         return (p1, p2, p3)
 

@@ -96,12 +96,18 @@ def stop_chrono(id_num):
     now = supervisor.ticks_ms()
     stopped = None
 
-    if str(_slot1["id"]) == id_str:
+    c1_id = str(_slot1.get("id", ""))
+    c2_id = str(_slot2.get("id", ""))
+
+    match_c1 = (c1_id == id_str) or (c1_id.isdigit() and id_str.isdigit() and int(c1_id) == int(id_str))
+    match_c2 = (c2_id == id_str) or (c2_id.isdigit() and id_str.isdigit() and int(c2_id) == int(id_str))
+
+    if match_c1:
         if _slot1["running"]:
             _slot1["running"] = False
             _slot1["elapsed_raw"] = (now - _slot1["start_ticks"]) & 0x1FFFFFFF
         stopped = _slot1
-    elif str(_slot2["id"]) == id_str:
+    elif match_c2:
         if _slot2["running"]:
             _slot2["running"] = False
             _slot2["elapsed_raw"] = (now - _slot2["start_ticks"]) & 0x1FFFFFFF
@@ -124,6 +130,7 @@ def stop_chrono(id_num):
 def stop_all_chrono():
     """
     Detiene ambos cronómetros simultáneamente (Parada Global).
+    Ambos slots quedan congelados en el mismo tick instantáneo.
     """
     now = supervisor.ticks_ms()
     if _slot1["running"]:
@@ -132,6 +139,7 @@ def stop_all_chrono():
     if _slot2["running"]:
         _slot2["running"] = False
         _slot2["elapsed_raw"] = (now - _slot2["start_ticks"]) & 0x1FFFFFFF
+    return _format_single(_slot1), _format_single(_slot2)
 
 def clr_chrono(slot_num=None):
     """

@@ -52,13 +52,9 @@ class BuzzerController:
         self.beep(0.35)
 
     def sound_arrival(self):
-        """Señal acústica cuando el nadador toca la placa de llegada"""
+        """Señal acústica ágil cuando el nadador toca la placa de llegada"""
         print("🔊 Señal acústica: ¡Llegada confirmada!")
-        if not self.device:
-            return
-        for _ in range(2):
-            self.beep(0.15)
-            time.sleep(0.08)
+        self.beep(0.08)
 
 # Instancia singleton para el sistema
 buzzer = BuzzerController()

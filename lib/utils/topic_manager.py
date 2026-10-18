@@ -95,12 +95,15 @@ def record_chrono_stop(id_num, mqtt=None):
         scores = []
     
     exist = False
+    id_str = str(id_num)
     for i, score in enumerate(scores):
         try:
             curr_score = json.loads(score) if isinstance(score, str) else score
-            if str(curr_score.get('id')) == str(id_num):
+            curr_id = str(curr_score.get('id', ''))
+            if curr_id == id_str or (curr_id.isdigit() and id_str.isdigit() and int(curr_id) == int(id_str)):
                 scores[i] = single_json_txt
                 exist = True
+                break
             else:
                 scores[i] = score if isinstance(score, str) else json.dumps(score)
         except Exception:
@@ -110,11 +113,59 @@ def record_chrono_stop(id_num, mqtt=None):
         scores.append(single_json_txt)
     
     scores_txt = json.dumps(scores)
+    guarda_valor('data.txt', 'scores', scores_txt)
     if mqtt:
         mqtt.publish(config.TOPIC_SENDSCORES, scores_txt)
         mqtt.publish(config.TOPIC_SENDCHRONO, full_chrono_txt)
-    guarda_valor('data.txt', 'scores', scores_txt)
     return stopped_single
+
+def record_all_chrono_stop(mqtt=None):
+    """
+    Detiene ambos cronómetros simultáneamente en el mismo instante (mismo tick)
+    y luego persiste ambos récords en una sola operación atómica de I/O y MQTT.
+    Garantiza cero diferencia temporal inducida por operaciones lentas.
+    """
+    f1, f2 = stop_all_chrono()
+
+    full_chrono = get_chrono_formatted()
+    full_chrono_txt = json.dumps(full_chrono)
+
+    try:
+        scores_raw = lee_valor('data.txt', 'scores')
+        scores = json.loads(scores_raw) if scores_raw else []
+    except Exception:
+        scores = []
+
+    def update_in_scores(target_id, data_obj):
+        if not target_id:
+            return
+        single_txt = json.dumps(data_obj)
+        target_str = str(target_id)
+        for i, s in enumerate(scores):
+            try:
+                curr = json.loads(s) if isinstance(s, str) else s
+                curr_id = str(curr.get('id', ''))
+                if curr_id == target_str or (curr_id.isdigit() and target_str.isdigit() and int(curr_id) == int(target_str)):
+                    scores[i] = single_txt
+                    return
+            except Exception:
+                pass
+        scores.append(single_txt)
+
+    c1_id = full_chrono.get("c1", {}).get("id", "1")
+    c2_id = full_chrono.get("c2", {}).get("id", "2")
+
+    update_in_scores(c1_id, f1)
+    update_in_scores(c2_id, f2)
+
+    scores_txt = json.dumps(scores)
+    guarda_valor('data.txt', 'scores', scores_txt)
+
+    if mqtt:
+        mqtt.publish(config.TOPIC_SENDSCORES, scores_txt)
+        mqtt.publish(config.TOPIC_SENDCHRONO, full_chrono_txt)
+
+    return f1, f2
 
 def chrono_topic(msg, mqtt):
     msg_pair = msg.split(':', 1)
@@ -147,7 +198,7 @@ def chrono_topic(msg, mqtt):
             parts = payload.split(':')
             target_id = parts[0].strip()
         record_chrono_stop(target_id or '1', mqtt)
-        buzzer.beep(0.2)
+        buzzer.sound_arrival()
     elif command in ('play_all', 'start_all'):
         # Inicio global simultáneo de dos nadadores (Salida general)
         parts = payload.split(',') if payload else ['1', '2']
@@ -158,18 +209,9 @@ def chrono_topic(msg, mqtt):
         if mqtt:
             mqtt.publish(config.TOPIC_SENDCHRONO, json.dumps(get_chrono_formatted()))
     elif command in ('pause_all', 'stop_all'):
-        # Parada global de ambos nadadores
-        c = get_chrono_formatted()
-        c1 = c.get('c1', {})
-        c2 = c.get('c2', {})
-        if c1.get('status') == 'started':
-            record_chrono_stop(c1.get('id', '1'), mqtt)
-        if c2.get('status') == 'started':
-            record_chrono_stop(c2.get('id', '2'), mqtt)
-        stop_all_chrono()
-        buzzer.beep(0.25)
-        if mqtt:
-            mqtt.publish(config.TOPIC_SENDCHRONO, json.dumps(get_chrono_formatted()))
+        # Parada global de ambos nadadores simultánea e instantánea
+        record_all_chrono_stop(mqtt)
+        buzzer.sound_arrival()
 
 
 def get_scores_topic(msg, mqtt):
