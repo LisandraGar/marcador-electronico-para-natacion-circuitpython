@@ -1,5 +1,6 @@
 import os
 import time
+import supervisor
 import board
 import json
 from adafruit_display_text import label
@@ -60,11 +61,22 @@ def main():
     bandera = True
     m_antes = None
     s_antes = None
-    last_reconnect_attempt = 0
+    last_reconnect_attempt = supervisor.ticks_ms()
 
     while True:
         try:
-            mqtt_client.loop()
+            if mqtt_client.connected:
+                mqtt_client.loop()
+            else:
+                # Intento de reconexión periódico y no bloqueante (cada 15 segundos)
+                now_ms = supervisor.ticks_ms()
+                if (now_ms - last_reconnect_attempt) & 0x1FFFFFFF > 15000:
+                    last_reconnect_attempt = now_ms
+                    print("🔄 Intentando reconectar a MQTT en segundo plano...")
+                    try:
+                        mqtt_client.connect_mqtt()
+                    except Exception:
+                        pass
 
             # Lectura de los 4 botones físicos del sistema:
             # 1. Cambiar visualización (U8 / IO17 o sensor auxiliar IO11)
@@ -184,11 +196,4 @@ def main():
 
         except Exception as e:
             print(f"Error en main: {e}")
-            # Estrategia de reconexión controlada
-            if not mqtt_client.connected:
-                print("Intentando reconectar...")
-                try:
-                    mqtt_client.connect_mqtt()
-                except Exception as inner_e:
-                    print(f"Reconexión fallida: {inner_e}")
-                    time.sleep(2) # Evita un bucle de error infinito si el servidor cayó
+            time.sleep(0.05)

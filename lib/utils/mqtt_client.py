@@ -87,24 +87,42 @@ class MQTTClient:
     
     def connect_mqtt(self):
         """Conectar al broker MQTT"""
+        if not self.mqtt_client:
+            return False
         try:
             print(f"Conectando a MQTT... {config.mqtt_broker}:{config.mqtt_port}")
             self.mqtt_client.connect()
+            self.connected = True
             # Publicar estado online
-            self.mqtt_client.publish(config.TOPIC_WILL, "online", retain=True)
+            self.publish(config.TOPIC_WILL, "online", retain=True)
+            return True
         except MMQTTException as e:
             print(f"❌ Error MQTT: {e}")
+            self.connected = False
+            return False
         except Exception as e:
             print(f"❌ Error general: {e}")
+            self.connected = False
+            return False
             
     def publish(self, topic, message, retain=False):
-        if self.mqtt_client:
+        """Publica de forma segura; si MQTT no está conectado, descarta sin romper el bucle"""
+        if not self.connected or not self.mqtt_client:
+            return False
+        try:
             self.mqtt_client.publish(topic, message, retain=retain)
+            return True
+        except Exception as e:
+            print(f"⚠️ Error al publicar en {topic}: {e}")
+            self.connected = False
+            return False
     
     def loop(self, **kwargs):
-        """Mantener la conexión MQTT activa"""
+        """Mantiene la conexión activa únicamente cuando está conectado"""
+        if not self.connected or not self.mqtt_client:
+            return
         try:
             self.mqtt_client.loop(**kwargs)
         except Exception as e:
-            print(f"Error en loop: {e}")
+            print(f"⚠️ Error en loop MQTT: {e}")
             self.connected = False
